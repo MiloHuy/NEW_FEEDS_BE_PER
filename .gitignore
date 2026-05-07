@@ -56,3 +56,7 @@ application-local.properties
 # Env
 # ============================================== 
 .env
+.api-gateway/.env
+.discovery-server/.env
+.identity-service/.env
+.post-service/.env

@@ -1,8 +1,9 @@
-package com.example.identity.repository;
+package com.example.identity.database.repository;
 
-import com.example.identity.entity.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
+
+import com.example.identity.database.entity.User;
 
 import java.util.Optional;
 
