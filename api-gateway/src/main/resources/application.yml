@@ -14,22 +14,22 @@ spring:
       org.springframework.security: DEBUG
       org.springframework.security.oauth2: DEBUG
       com.nimbusds.jose: DEBUG
+
   security:
     oauth2:
       resourceserver:
         jwt:
           secret-key: "${JWT_SECRET}"
           jws-algorithms: HS256
-          
+
   cloud:
     gateway:
-      
       grpc:
         enabled: false
       discovery:
         locator:
           enabled: true
-          
+
       routes:
         - id: identity-service
           uri: lb://identity-service
@@ -39,7 +39,7 @@ spring:
         - id: post-service
           uri: lb://post-service
           predicates:
-            - Path=/api/posts/**, /api/media/**
+            - Path=/api/posts/**, /api/friendships**, /api/notifications/**, /api/actions/**, /api/media/**
 
         - id: user-service
           uri: lb://user-service
@@ -49,14 +49,14 @@ spring:
 grpc:
   client:
     identity-service:
-      address: 'discovery:///identity-service'
+      address: "discovery:///identity-service"
       enable-keep-alive: true
       negotiation-type: plaintext
 
 eureka:
   instance:
     prefer-ip-address: true
-    instance-id: ${spring.application.name}:${random.value} 
+    instance-id: ${spring.application.name}:${random.value}
   client:
     service-url:
       defaultZone: ${EUREKA_URL:http://discovery-server:8761/eureka/}

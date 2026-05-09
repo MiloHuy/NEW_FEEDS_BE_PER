@@ -18,14 +18,16 @@ public class UserService {
 
     private final UserRepository userRepository;
 
-    public AType getUserProfile(String userId) {
-        User user = userRepository.findById(userId)
+    public AType getUserProfile(String username) {
+        
+        User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new AppException(ErrorType.notFound("User not found")));
+
         return ApiType.success(user);
     }
 
-    public AType updateProfile(String userId, UpdateProfileRequest request) {
-        User user = userRepository.findById(userId)
+    public AType updateProfile(String username, UpdateProfileRequest request) {
+        User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new AppException(ErrorType.notFound("User not found")));
         
         if (request.getFirstName() != null) user.setFirstName(request.getFirstName());

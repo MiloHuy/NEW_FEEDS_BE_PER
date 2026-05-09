@@ -13,7 +13,6 @@ import com.example.src.services.RedisService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import reactor.core.publisher.Mono;
-import org.springframework.data.redis.core.ReactiveStringRedisTemplate;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -31,7 +30,6 @@ public class AuthenticationFilter implements GlobalFilter, Ordered {
                 .flatMap(auth -> {
                     Jwt jwt = auth.getToken();
                     String tokenValue = jwt.getTokenValue();
-                    log.info("Token Value: {}", tokenValue);
                     return redisService.hasToken(tokenValue)
                             .flatMap(hasKey -> {
                                 if (Boolean.TRUE.equals(hasKey)) {

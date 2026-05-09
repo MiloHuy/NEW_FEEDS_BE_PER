@@ -46,7 +46,7 @@ public class User {
 
     @Column(nullable = false)
     @Builder.Default
-    private String role = "USER";
+    private String role = "ROLE_USER";
 
     private String firstName;
 

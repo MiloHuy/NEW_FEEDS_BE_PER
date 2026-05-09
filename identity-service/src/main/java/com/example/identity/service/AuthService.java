@@ -43,7 +43,8 @@ public class AuthService {
     }
 
     public AType register(RegisterRequest request) {
-
+        // 1 check user duplicate username or email
+        
         if (userRepository.existsByUsername(request.getUsername())) {
             throw new AppException(ErrorType.badRequest("Username already exists"));
         }
@@ -55,6 +56,8 @@ public class AuthService {
         user.setUsername(request.getUsername());
         user.setEmail(request.getEmail());
         user.setPassword(passwordEncoder.encode(request.getPassword()));
+        user.setFirstName(request.getFirstname());
+        user.setLastName(request.getLastname());
 
         userRepository.save(user);
 
