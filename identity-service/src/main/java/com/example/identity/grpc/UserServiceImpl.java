@@ -8,9 +8,9 @@ import net.devh.boot.grpc.server.service.GrpcService;
 
 @GrpcService
 public class UserServiceImpl extends UserServiceGrpc.UserServiceImplBase {
-    private final com.example.identity.repository.UserRepository userRepository;
+    private final com.example.identity.database.repository.UserRepository userRepository;
 
-    public UserServiceImpl(com.example.identity.repository.UserRepository userRepository) {
+    public UserServiceImpl(com.example.identity.database.repository.UserRepository userRepository) {
         this.userRepository = userRepository;
     }
 
@@ -21,6 +21,7 @@ public class UserServiceImpl extends UserServiceGrpc.UserServiceImplBase {
                     .setUserId(user.getId())
                     .setUsername(user.getUsername())
                     .setEmail(user.getEmail())
+                    .setRole(user.getRole())
                     .build();
             responseObserver.onNext(response);
             responseObserver.onCompleted();

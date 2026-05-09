@@ -8,38 +8,49 @@ import org.springframework.security.oauth2.server.resource.authentication.JwtAut
 import org.springframework.stereotype.Component;
 import org.springframework.web.server.ServerWebExchange;
 
+import com.example.src.services.RedisService;
 
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import reactor.core.publisher.Mono;
+import org.springframework.data.redis.core.ReactiveStringRedisTemplate;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 
 @Component
+@Slf4j
+@RequiredArgsConstructor
 public class AuthenticationFilter implements GlobalFilter, Ordered {
 
-@Override
+    private final RedisService redisService;
+
+    @Override
     public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
-
         return exchange.getPrincipal()
-                .cast(JwtAuthenticationToken.class)
-                .map(auth -> {
+                .ofType(JwtAuthenticationToken.class)
+                .flatMap(auth -> {
                     Jwt jwt = auth.getToken();
+                    String tokenValue = jwt.getTokenValue();
+                    log.info("Token Value: {}", tokenValue);
+                    return redisService.hasToken(tokenValue)
+                            .flatMap(hasKey -> {
+                                if (Boolean.TRUE.equals(hasKey)) {
+                                    String userId = jwt.getSubject();
+                                    String role = jwt.getClaimAsString("role");
 
-                    String userId = jwt.getSubject();
-                    String role = jwt.getClaimAsString("role");
-
-                    return exchange.mutate()
-                            .request(req -> req.headers(headers -> {
-
-                                // remove fake headers từ client
-                                headers.remove("X-User-Id");
-                                headers.remove("X-User-Role");
-
-                                // inject từ JWT
-                                headers.add("X-User-Id", userId);
-                                headers.add("X-User-Role", role);
-                            }))
-                            .build();
+                                    ServerWebExchange mutatedExchange = exchange.mutate()
+                                            .request(r -> r.headers(headers -> {
+                                                headers.set("X-User-Id", userId);
+                                                headers.set("X-User-Role", role);
+                                            }))
+                                            .build();
+                                    return chain.filter(mutatedExchange);
+                                }
+                                return Mono.error(
+                                        new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Token invalidated"));
+                            });
                 })
-                .defaultIfEmpty(exchange)
-                .flatMap(chain::filter);
+                .switchIfEmpty(chain.filter(exchange));
     }
 
     @Override

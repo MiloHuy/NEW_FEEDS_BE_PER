@@ -24,8 +24,10 @@ public class JwtProvider {
     @Value("${jwt.refresh-expiration}")
     private long refreshExpiration;
 
-    public String generateToken(String username) {
-        return generateToken(new HashMap<>(), username, jwtExpiration);
+    public String generateToken(String username, String role) {
+        Map<String, Object> claims = new HashMap<>();
+        claims.put("role", role);
+        return generateToken(claims, username, jwtExpiration);
     }
 
     public String generateRefreshToken(String username) {

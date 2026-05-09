@@ -4,19 +4,37 @@ server:
 spring:
   application:
     name: api-gateway
+  data:
+    redis:
+      host: redis
+      port: 6379
 
+  logging:
+    level:
+      org.springframework.security: DEBUG
+      org.springframework.security.oauth2: DEBUG
+      com.nimbusds.jose: DEBUG
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          secret-key: "${JWT_SECRET}"
+          jws-algorithms: HS256
+          
   cloud:
     gateway:
+      
       grpc:
         enabled: false
       discovery:
         locator:
           enabled: true
+          
       routes:
         - id: identity-service
           uri: lb://identity-service
           predicates:
-            - Path=/api/auth/**
+            - Path=/api/auth/**, /api/admin/**, /api/users/**
 
         - id: post-service
           uri: lb://post-service

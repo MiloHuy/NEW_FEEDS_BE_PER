@@ -1,47 +1,54 @@
 package com.example.identity.service;
 
-import com.example.identity.dto.AuthRequest;
-import com.example.identity.dto.AuthResponse;
-import com.example.identity.dto.RegisterRequest;
-import com.example.identity.entity.User;
-import com.example.identity.repository.UserRepository;
+import com.example.identity.database.entity.User;
+import com.example.identity.database.repository.UserRepository;
+import com.example.identity.dto.API.AType;
+import com.example.identity.dto.API.ApiType;
+import com.example.identity.dto.API.ErrorType;
+import com.example.identity.dto.req.AuthRequest;
+import com.example.identity.dto.req.RegisterRequest;
+import com.example.identity.dto.res.AuthResponse;
+import com.example.identity.exception.AppException;
 import com.example.identity.security.JwtProvider;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import lombok.RequiredArgsConstructor;
+
 @Service
+@RequiredArgsConstructor
 public class AuthService {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtProvider jwtProvider;
+    private final RedisService redisService;
 
-    public AuthService(UserRepository userRepository, PasswordEncoder passwordEncoder, JwtProvider jwtProvider) {
-        this.userRepository = userRepository;
-        this.passwordEncoder = passwordEncoder;
-        this.jwtProvider = jwtProvider;
-    }
+    public AType login(AuthRequest request) {
 
-    public AuthResponse login(AuthRequest request) {
         User user = userRepository.findByUsername(request.getUsername())
-                .orElseThrow(() -> new RuntimeException("Invalid username or password"));
+                .orElseThrow(() -> new AppException(ErrorType.
+                    badRequest("Invalid username or password")));
 
         if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
-            throw new RuntimeException("Invalid username or password");
+            throw new AppException(ErrorType.badRequest("Invalid username or password"));
         }
 
-        String accessToken = jwtProvider.generateToken(user.getUsername());
+        String accessToken = jwtProvider.generateToken(user.getUsername(), user.getRole());
         String refreshToken = jwtProvider.generateRefreshToken(user.getUsername());
 
-        return new AuthResponse(accessToken, refreshToken);
+        redisService.setValueWithExpiry(accessToken , user.getId().toString());
+
+        return ApiType.success(new AuthResponse(accessToken, refreshToken));
     }
 
-    public AuthResponse register(RegisterRequest request) {
+    public AType register(RegisterRequest request) {
+
         if (userRepository.existsByUsername(request.getUsername())) {
-            throw new RuntimeException("Username already exists");
+            throw new AppException(ErrorType.badRequest("Username already exists"));
         }
         if (userRepository.existsByEmail(request.getEmail())) {
-            throw new RuntimeException("Email already exists");
+            throw new AppException(ErrorType.badRequest("Email already exists"));
         }
 
         User user = new User();
@@ -51,26 +58,30 @@ public class AuthService {
 
         userRepository.save(user);
 
-        String accessToken = jwtProvider.generateToken(user.getUsername());
+        String accessToken = jwtProvider.generateToken(user.getUsername(), user.getRole());
         String refreshToken = jwtProvider.generateRefreshToken(user.getUsername());
 
-        return new AuthResponse(accessToken, refreshToken);
+        redisService.setValueWithExpiry(accessToken , user.getId().toString());
+
+        return ApiType.success(new AuthResponse(accessToken, refreshToken));
     }
 
-    public AuthResponse refresh(String refreshToken) {
+    public AType refresh(String refreshToken) {
+        
         if (!jwtProvider.isTokenValid(refreshToken)) {
-            throw new RuntimeException("Invalid refresh token");
+            throw new AppException(ErrorType.badRequest("Invalid refresh token"));
         }
 
         String username = jwtProvider.extractUsername(refreshToken);
 
-        // Ensure user still exists
         User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new AppException(ErrorType.badRequest("User not found")));
 
-        String newAccessToken = jwtProvider.generateToken(user.getUsername());
+        String newAccessToken = jwtProvider.generateToken(user.getUsername(), user.getRole());
         String newRefreshToken = jwtProvider.generateRefreshToken(user.getUsername());
 
-        return new AuthResponse(newAccessToken, newRefreshToken);
+        redisService.setValueWithExpiry(newAccessToken , user.getId().toString());
+
+        return ApiType.success(new AuthResponse(newAccessToken, newRefreshToken));
     }
 }

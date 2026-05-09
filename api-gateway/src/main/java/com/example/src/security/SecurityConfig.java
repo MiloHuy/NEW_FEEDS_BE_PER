@@ -3,11 +3,13 @@ package com.example.src.security;
 
 import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
+import org.springframework.http.HttpMethod;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AbstractAuthenticationToken;
+import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.reactive.EnableWebFluxSecurity;
 import org.springframework.security.config.web.server.ServerHttpSecurity;
 import org.springframework.security.oauth2.jwt.NimbusReactiveJwtDecoder;
@@ -44,15 +46,18 @@ public class SecurityConfig {
 
         @Bean
         ReactiveJwtDecoder jwtDecoder() {
-                SecretKey key = new SecretKeySpec(secretKey.getBytes(), algorithm);
+                byte[] keyBytes = io.jsonwebtoken.io.Decoders.BASE64.decode(secretKey);
+                SecretKey key = new SecretKeySpec(keyBytes, algorithm);
                 return NimbusReactiveJwtDecoder.withSecretKey(key).build();
         }
 
         @Bean
         SecurityWebFilterChain springSecurityFilterChain(ServerHttpSecurity http) {
                 return http
+                        .cors(Customizer.withDefaults())
                         .csrf(ServerHttpSecurity.CsrfSpec::disable)
                         .authorizeExchange(exchanges -> exchanges
+                                        .pathMatchers(HttpMethod.OPTIONS).permitAll()
                                         .pathMatchers(WHITE_LIST_URLS).permitAll()
                                         .anyExchange().authenticated())
                         .oauth2ResourceServer(oauth2 -> oauth2
@@ -64,14 +69,16 @@ public class SecurityConfig {
         }
 
         @Bean
-        Converter<Jwt, Mono<AbstractAuthenticationToken>> jwtAuthenticationConverter() {
-                JwtGrantedAuthoritiesConverter authoritiesConverter =
-                                new JwtGrantedAuthoritiesConverter();
+        public Converter<Jwt, Mono<AbstractAuthenticationToken>> jwtAuthenticationConverter() {
+
+                JwtGrantedAuthoritiesConverter authoritiesConverter = new JwtGrantedAuthoritiesConverter();
 
                 authoritiesConverter.setAuthoritiesClaimName("role");
+                
+                authoritiesConverter.setAuthorityPrefix("");
 
                 JwtAuthenticationConverter jwtConverter = new JwtAuthenticationConverter();
-
+                
                 jwtConverter.setJwtGrantedAuthoritiesConverter(authoritiesConverter);
 
                 return new ReactiveJwtAuthenticationConverterAdapter(jwtConverter);
